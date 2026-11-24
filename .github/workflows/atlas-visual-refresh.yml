@@ -1,0 +1,49 @@
+name: Atlas visual refresh
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/atlas-visual-refresh.yml']
+permissions:
+  contents: write
+  pages: write
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Apply self-contained styling without changing collection or scripts
+        shell: python
+        run: |
+          from pathlib import Path
+          import hashlib
+          p = Path('index.html')
+          b = p.read_bytes()
+          s = b.decode('utf-8')
+          assert hashlib.sha1(b'blob '+str(len(b)).encode()+b'\0'+b).hexdigest() == '9583f72db9f974db3e54b25822b22981bf576d1a', 'Page changed: review required'
+          css = '''
+          :root{--paper:#f8f5ed;--ink:#203f34;--muted:#58685d;--line:#dddcd0;--green:#24513f;--accent:#a35637}
+          body{background:radial-gradient(ellipse at 90% 12%,#e5eadb 0,transparent 38%),var(--paper);line-height:1.65}header{background:#fffdf7;border-bottom:1px solid var(--line)}.nav{min-height:92px}.compass{width:48px;height:48px;background:var(--green);color:#f6d6a1;border:0;box-shadow:0 5px 16px #203f341a}.brand-title{font-size:28px}.brand-subtitle{font-size:12px}nav a:hover{color:var(--accent)}.pill{background:#edf1e7;border-color:#d3ddcc}
+          .hero{padding:68px 0 64px;gap:58px}.hero>div{min-width:0}.eyebrow{font-size:11px;letter-spacing:2.2px;color:#506247}h1{font-size:clamp(44px,5.5vw,72px);line-height:1.1;letter-spacing:-2px}h1 em{text-decoration:underline;text-decoration-color:#d7b893;text-underline-offset:9px;text-decoration-thickness:2px}.lead{font-size:16px;max-width:440px}.hero-author{font-size:13px}.button{border-radius:30px;min-height:46px;padding:12px 23px;font-weight:600;box-shadow:0 5px 14px #203f3414}.secondary{box-shadow:none}.art{background:#f0eee1;border:1px solid #d9ddca;padding:24px 22px 18px;border-radius:180px 180px 24px 24px;box-shadow:0 20px 45px #203f3410}.art-caption{font-size:10px;letter-spacing:.5px}
+          h2{font-size:38px}.section-head{margin-bottom:26px}.subjects{gap:14px;border:0;overflow:visible;border-radius:0}.subject{border:1px solid var(--line)!important;border-radius:18px;background:#fffdf8;min-height:205px;padding:24px;box-shadow:0 5px 18px #203f3405}.subject:nth-child(1){background:#f3e7db}.subject:nth-child(2){background:#e5edf0}.subject:nth-child(3){background:#eee5ef}.subject:nth-child(4){background:#e6eddd}.subject[aria-pressed=true]{outline:2px solid var(--green);outline-offset:3px}.subject:hover{filter:brightness(.98)}.symbol{font-size:40px}.subject-title{font-size:22px}.subject-count{font-size:12px}
+          .catalog{padding:54px 0 64px}.toolbar{padding:14px;background:#fffdf8;border:1px solid var(--line);border-radius:18px}.search{border:1px solid #d3d9cc;border-radius:10px;background:white;padding:12px 15px;font-size:16px}select{border-radius:10px;font-size:14px;min-height:46px}.chip{font-size:12px;min-height:44px;background:#fffdf8;padding:9px 15px}.chips{gap:9px}.cards{gap:24px}.card{border-radius:20px;background:#fffdf8;box-shadow:0 8px 26px #203f3408;transition:transform .2s,box-shadow .2s}.cover{height:205px}.cover-type{font-size:11px;padding:6px 12px}.card-body{padding:24px}.meta{font-size:10px}.card h3{font-size:28px;line-height:1.2}.card p{font-size:14px}.card-footer a{font-size:13px;font-weight:650}.favorite{border-radius:50%;background:#f1eee4;min-width:44px;min-height:44px}.small{font-size:13px}.about{background:#e9eddf;border:1px solid #d7dfcb;border-radius:24px;padding:36px;gap:40px;margin-bottom:48px}.about p{color:#425748;font-size:15px}.signature{font-size:28px}footer{background:#fffdf7}.editor{padding:40px 0}.field input,.field textarea,.field select{font-size:16px;border-radius:10px}.text-button{min-height:44px}.empty{border-radius:20px;background:#fffdf8}
+          @media(hover:hover){.card:hover{transform:translateY(-5px);box-shadow:0 16px 32px #203f3414}}
+          @media(max-width:950px){.hero{gap:28px}.subjects{grid-template-columns:repeat(2,minmax(0,1fr))}.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.subject{min-height:180px}.art{padding:18px}.art-caption{flex-wrap:wrap}}
+          @media(max-width:680px){.wrap{padding-left:20px;padding-right:20px}.nav{min-height:86px;gap:10px}.brand-title{font-size:22px}.brand-subtitle{font-size:10px}.compass{width:36px;height:36px}.hero{padding:36px 0 44px;gap:28px}h1{font-size:clamp(38px,8.9vw,58px);letter-spacing:-1.5px}.lead{font-size:15px}.art{max-width:390px;border-radius:160px 160px 20px 20px}.subjects{gap:12px}.subject{padding:18px;min-height:180px}.subject-title{font-size:20px}h2{font-size:32px}.cards{grid-template-columns:minmax(0,1fr)}.cover{height:210px}.toolbar{padding:12px;gap:10px}.search{flex-basis:100%}.toolbar select{width:100%;flex:1 1 100%}.catalog{padding-top:38px}.about{padding:26px;gap:25px}.small{font-size:12px}.section-head>.small{max-width:110px}.card-body{padding:22px}}
+          @media(max-width:360px){.subjects{grid-template-columns:minmax(0,1fr)}.brand-title{font-size:20px}.brand-subtitle{max-width:140px}.pill{font-size:10px;padding:8px}.about{padding:20px}}
+          @media(prefers-reduced-motion:reduce){.card{transition:none}.card:hover{transform:none}}
+          '''
+          assert s.count('</head>') == 1 and 'id="atlas-refresh"' not in s
+          p.write_text(s.replace('</head>','<style id="atlas-refresh">'+css+'</style></head>',1),encoding='utf-8')
+      - name: Commit visual refresh
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- index.html
+          git commit -m 'Refresh Atlas layout, cards and responsive styling'
+          git push origin HEAD:main
+      - name: Request Pages rebuild
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method POST "repos/$GITHUB_REPOSITORY/pages/builds"
