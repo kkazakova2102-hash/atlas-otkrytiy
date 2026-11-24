@@ -1,0 +1,40 @@
+name: Install Atlas favicon
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/install-atlas-favicon.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Install book and compass favicon
+        shell: python
+        run: |
+          from pathlib import Path
+          import hashlib
+          page = Path('index.html')
+          original = page.read_bytes()
+          link = '<link rel="icon" type="image/svg+xml" href="./favicon.svg?v=1">'
+          text = original.decode('utf-8')
+          if link not in text:
+              blob = b'blob ' + str(len(original)).encode() + b'\0' + original
+              assert hashlib.sha1(blob).hexdigest() == 'bf433015a1a7a811efa3af96144d36c3f25e14e0', 'Page changed: review before installing favicon'
+              assert text.count('</title>') == 1
+              text = text.replace('</title>', '</title>' + link, 1)
+              page.write_text(text, encoding='utf-8')
+          svg = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#f6f3eb"/><g stroke="#294e40" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round" fill="none"><path d="M32 23Q21 15 9 20V45Q21 41 32 49Q43 41 55 45V20Q43 15 32 23Z"/><path d="M32 23V49M15 27Q21 25 26 29M15 34Q21 32 26 36M38 29Q44 25 49 27M38 36Q44 32 49 34"/></g><path d="M32 7L36 16 32 25 28 16Z" fill="#a96849"/><path d="M22 16L32 12 42 16 32 20Z" fill="#294e40"/><path d="M32 7L36 16 32 25 28 16Z" fill="#a96849"/></svg>'''
+          Path('favicon.svg').write_text(svg + '\n', encoding='utf-8')
+      - name: Commit favicon and page link
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- index.html favicon.svg
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Install Atlas book and compass favicon'
+          git push origin HEAD:main
