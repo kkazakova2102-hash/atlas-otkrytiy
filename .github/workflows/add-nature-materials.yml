@@ -1,0 +1,60 @@
+name: Add nature materials
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/add-nature-materials.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+  pages: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Add two materials without duplicates
+        shell: python
+        run: |
+          from pathlib import Path
+          import json, re, hashlib, html
+          page = Path('index.html')
+          original = page.read_bytes()
+          text = original.decode('utf-8')
+          pattern = r'(<script id="atlas-data" type="application/json">)(.*?)(</script>)'
+          match = re.search(pattern, text, re.S)
+          assert match, 'Collection not found'
+          data = json.loads(match.group(2))
+          new_items = [
+              dict(id='taiga', title='Тайга — «Почему в тайге темно?»', subject='Окружающий мир', grade='4', topic='Природные зоны', type='Интерактивный материал', desc='Материал «Почему в тайге темно?» для 4 класса.', url='https://taiga-4-klass.pplx.app/', theme='forest', featured=False),
+              dict(id='soberi-skhemu', title='Собери схему по памяти', subject='Окружающий мир', grade='4', topic='Схемы', type='Тренажёр', desc='Тренажёр «Собери схему по памяти» для 4 класса.', url='https://soberi-skhemu-4-klass.pplx.app/', theme='reading', featured=False)
+          ]
+          existing = {x['url'].rstrip('/') for x in data['materials']}
+          additions = [x for x in new_items if x['url'].rstrip('/') not in existing]
+          if additions:
+              blob = b'blob ' + str(len(original)).encode() + b'\0' + original
+              assert hashlib.sha1(blob).hexdigest() == 'ca7bf3cc886cf94210acd00ce3eb1431c334badf', 'Page changed: review before updating'
+              ids = {x['id'] for x in data['materials']}
+              assert all(x['id'] not in ids for x in additions), 'ID conflict'
+              data['materials'].extend(additions)
+              data['revision'] = 'kazakova-seven-materials-v1'
+              encoded = json.dumps(data, ensure_ascii=False, separators=(',', ':')).replace('<', '\\u003c')
+              text = text[:match.start(2)] + encoded + text[match.end(2):]
+              links = ''.join('<li><a href="' + html.escape(x['url'], quote=True) + '">' + html.escape(x['title']) + '</a></li>' for x in data['materials'])
+              fallback = '<noscript><p>Для каталога включите JavaScript. Прямые ссылки:</p><ul>' + links + '</ul></noscript>'
+              assert len(re.findall(r'<noscript>.*?</noscript>', text, re.S)) == 1
+              text = re.sub(r'<noscript>.*?</noscript>', lambda _: fallback, text, count=1, flags=re.S)
+              page.write_text(text, encoding='utf-8')
+      - name: Commit updated collection
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- index.html
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Add taiga lesson and memory scheme trainer'
+          git push origin HEAD:main
+      - name: Request GitHub Pages rebuild
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method POST "repos/$GITHUB_REPOSITORY/pages/builds"
